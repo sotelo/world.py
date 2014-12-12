@@ -1,13 +1,12 @@
 if __name__ == "__main__":
     import scipy.io.wavfile
     import matplotlib.pyplot as plt
+    import copy
     import numpy as np
 
-    file = '/Users/jose/.julia/v0.3/WORLD/test/data/test16k.wav'
+    file = 'test16k.wav'
     fs, x = scipy.io.wavfile.read(file)
-
     from wrap1 import *
-
     fs, nbit, x_length, x = readwav(file)
     #plt.plot(x)
     #plt.show()
@@ -18,7 +17,7 @@ if __name__ == "__main__":
 
     f0, time_axis = dio(x, fs, period, opt)
 
-    f0_by_dio = np.copy(f0)
+    f0_by_dio = copy.deepcopy(f0)
     f0 = stonemask(x, fs, period, time_axis, f0)
 
     #plt.plot(time_axis, f0)
@@ -35,7 +34,9 @@ if __name__ == "__main__":
     #plt.imshow(np.log(spectrogram).T,origin="lower", aspect="auto")
     #plt.show()
 
+    #double free
     residual = platinum(x, fs, period, time_axis, f0, spectrogram)
+
     #plt.imshow(residual.T,origin="lower", aspect="auto")
     #plt.show()
     #print residual.shape
