@@ -1,0 +1,3 @@
+[submodule "lib/world"]
+	path = lib/world
+	url = git://github.com/r9y9/WORLD.git
