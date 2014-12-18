@@ -122,7 +122,7 @@ def platinum(np.ndarray[double, ndim=1, mode="c"] x not None, int fs, double per
     cdef int fft_size = GetFFTSizeForCheapTrick(fs)
 
     cdef double[:,::1] spectrogram = np_spectrogram
-    cdef double[:,::1] residual = np.zeros((f0_length,fft_size/2+1))
+    cdef double[:,::1] residual = np.zeros((f0_length,fft_size+1))
 
     cdef np.intp_t[:] tmp = np.zeros(f0_length, dtype=np.intp)
     cdef np.intp_t[:] tmp2 = np.zeros(f0_length, dtype=np.intp)
