@@ -1,5 +1,5 @@
 #!/bin/bash
-git submodule update
+git submodule update --init --recursive
 pushd .
 cd lib/world
 ./waf configure && ./waf
