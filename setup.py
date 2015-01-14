@@ -11,6 +11,7 @@ ext_modules = [Extension(
                     os.path.join(os.getcwd(), 'lib/world/src/')],
     library_dirs = [os.path.join(os.getcwd(), 'lib/world/build/src/')],
     libraries = ['world'],
+    extra_compile_args=['-fpermissive'],
     language="c++",
     )]
 
