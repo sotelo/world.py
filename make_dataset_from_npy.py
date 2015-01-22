@@ -1,0 +1,133 @@
+import glob
+import numpy as np
+import os
+import sys
+import tables
+from wrap1 import *
+from sklearn.decomposition import PCA
+
+if len(sys.argv) < 2 or sys.argv[1] == "-h" or sys.argv[1] == "--help":
+    print("Usage: make_dataset.py <directory_of_npy_files> [save_path=<directory_of_npy_files>/saved_world_data.h5]")
+    quit()
+
+files_dir = sys.argv[1]
+npy_files = glob.glob(os.path.join(files_dir, '*[_,0-9][0-9].npy'))
+npy_files = sorted(npy_files, key=lambda x: int(x.split("_")[-1][:-4]))
+# Only do 50k examples at first, 10k per file
+npy_files = npy_files[:5]
+
+if len(sys.argv) > 2:
+    h5_file_path = os.path.join(sys.argv[2])
+else:
+    h5_file_path = os.path.join(files_dir, "saved_world_data.h5")
+
+if os.path.exists(h5_file_path):
+    raise ValueError(
+        "File already exists at %s, exiting.\n \
+         Delete and rerun script if you want a new dataset!!!" % h5_file_path)
+
+period = 5.0
+fs = 16000
+opt = pyDioOption(40.0, 700, 2.0, period, 4)
+
+# Get relevant shapes for EArray and create principal component matrices
+log_spectrograms = []
+residuals = []
+ds = np.load(npy_files[0])
+for i, X in enumerate(ds[:100]):
+    print("Fetching line %i of %i" % (i, len(ds)))
+    X = X.astype('float64')
+    f0, time_axis = dio(X, fs, period, opt)
+    f0 = stonemask(X, fs, period, time_axis, f0)
+    spectrogram = cheaptrick(X, fs, period, time_axis, f0)
+    residual = platinum(X, fs, period, time_axis, f0, spectrogram)
+    log_spectrogram = np.log(spectrogram)
+    residuals.append(residual)
+    log_spectrograms.append(spectrogram)
+
+log_spectrograms = np.concatenate(log_spectrograms, axis=0)
+residuals = np.concatenate(residuals, axis=0)
+
+s_n_components = 100
+r_n_components = 100
+print("Calculating decomposition of spectrogram subset")
+tf_s = PCA(n_components=s_n_components)
+tf_s.fit(log_spectrograms)
+print("Calculating decomposition of residual subset")
+tf_r = PCA(n_components=r_n_components)
+tf_r.fit(residuals)
+
+spectrogram_matrix = tf_s.components_
+residual_matrix = tf_r.components_
+
+reduced_log_spectrogram = tf_s.transform(log_spectrogram)
+tf_s_mean = tf_s.mean_
+reduced_residual = tf_r.transform(residual)
+tf_r_mean = tf_r.mean_
+
+h5_file = tables.openFile(h5_file_path, mode='w')
+print("Creating dataset at %s from directory %s" % (files_dir, h5_file_path))
+compression_filter = tables.Filters(complevel=5, complib='zlib')
+spectrogram_matrix_storage = h5_file.createCArray(h5_file.root,
+                                                  'spectrogram_matrix',
+                                                  tables.Float32Atom(),
+                                                  shape=spectrogram_matrix.shape,
+                                                  filters=compression_filter)
+spectrogram_subset_mean = h5_file.createCArray(h5_file.root,
+                                               'spectrogram_subset_mean',
+                                               tables.Float32Atom(),
+                                               shape=tf_s_mean.shape,
+                                               filters=compression_filter)
+residual_matrix_storage = h5_file.createCArray(h5_file.root, 'residual_matrix',
+                                               tables.Float32Atom(),
+                                               shape=residual_matrix.shape,
+                                               filters=compression_filter)
+residual_subset_mean = h5_file.createCArray(h5_file.root,
+                                            'residual_subset_mean',
+                                            tables.Float32Atom(),
+                                            shape=tf_r_mean.shape,
+                                            filters=compression_filter)
+spectrogram_matrix_storage[:] = spectrogram_matrix[:]
+spectrogram_subset_mean[:] = tf_s_mean[:]
+residual_matrix_storage[:] = residual_matrix[:]
+residual_subset_mean[:] = tf_r_mean[:]
+
+f0_data = h5_file.createEArray(h5_file.root, 'f0_data',
+                               tables.Float32Atom(),
+                               shape=(0, f0.shape[0]),
+                               filters=compression_filter)
+spectrogram_data = h5_file.createEArray(h5_file.root, 'spectrogram_data',
+                                        tables.Float32Atom(),
+                                        shape=(0, reduced_log_spectrogram.shape[0], reduced_log_spectrogram.shape[1]),
+                                        filters=compression_filter)
+residual_data = h5_file.createEArray(h5_file.root, 'residual_data',
+                                     tables.Float32Atom(),
+                                     shape=(0, reduced_residual.shape[0], reduced_residual.shape[1]),
+                                     filters=compression_filter)
+file_keys = h5_file.createEArray(h5_file.root, 'meta_info',
+                                 tables.StringAtom(itemsize=8),
+                                 shape=(0,),
+                                 filters=compression_filter)
+original_length = h5_file.createEArray(h5_file.root, 'original_length',
+                                       tables.Int32Atom(),
+                                       shape=(0, 1),
+                                       filters=compression_filter)
+for n, npy_file in enumerate(npy_files):
+    ds = np.load(npy_file)
+    print("Processing file %i of %i: %s" % (n, len(npy_files), npy_file))
+    for i, X in enumerate(ds):
+        print("Processing line %i of %i" % (i, len(ds)))
+        X = X.astype('float64')
+        f0, time_axis = dio(X, fs, period, opt)
+        f0 = stonemask(X, fs, period, time_axis, f0)
+        spectrogram = cheaptrick(X, fs, period, time_axis, f0)
+        residual = platinum(X, fs, period, time_axis, f0, spectrogram)
+        log_spectrogram = np.log(spectrogram)
+        f0_data.append(f0.astype('float32')[None])
+        spectrogram_data.append(tf_s.transform(
+            log_spectrogram.astype('float32'))[None])
+        residual_data.append(tf_r.transform(
+            residual.astype('float32'))[None])
+        file_keys.append(np.array(["%s-%i" % (npy_file, i)], dtype='S8'))
+        original_length.append(np.asarray([len(X),])[None])
+h5_file.close()
