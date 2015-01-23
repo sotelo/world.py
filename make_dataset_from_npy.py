@@ -4,7 +4,9 @@ import os
 import sys
 import tables
 from wrap1 import *
+from librosa_ports import melspec
 from sklearn.decomposition import PCA
+
 
 if len(sys.argv) < 2 or sys.argv[1] == "-h" or sys.argv[1] == "--help":
     print("Usage: make_dataset.py <directory_of_npy_files> [save_path=<directory_of_npy_files>/saved_world_data.h5]")
@@ -14,7 +16,7 @@ files_dir = sys.argv[1]
 npy_files = glob.glob(os.path.join(files_dir, '*[_,0-9][0-9].npy'))
 npy_files = sorted(npy_files, key=lambda x: int(x.split("_")[-1][:-4]))
 # Only do 50k examples at first, 10k per file
-npy_files = npy_files[:5]
+# npy_files = npy_files[:5]
 
 if len(sys.argv) > 2:
     h5_file_path = os.path.join(sys.argv[2])
@@ -48,36 +50,23 @@ for i, X in enumerate(ds[:100]):
 log_spectrograms = np.concatenate(log_spectrograms, axis=0)
 residuals = np.concatenate(residuals, axis=0)
 
-s_n_components = 100
+s_n_components = 64
 r_n_components = 100
-print("Calculating decomposition of spectrogram subset")
-tf_s = PCA(n_components=s_n_components)
-tf_s.fit(log_spectrograms)
+
+print("Calculating compressed spectrogram exmaple")
+mel_spectrogram = melspec(spectrogram, fs, s_n_components)
+log_mel_spectrogram = np.log(mel_spectrogram)
 print("Calculating decomposition of residual subset")
 tf_r = PCA(n_components=r_n_components)
 tf_r.fit(residuals)
 
-spectrogram_matrix = tf_s.components_
 residual_matrix = tf_r.components_
-
-reduced_log_spectrogram = tf_s.transform(log_spectrogram)
-tf_s_mean = tf_s.mean_
 reduced_residual = tf_r.transform(residual)
 tf_r_mean = tf_r.mean_
 
 h5_file = tables.openFile(h5_file_path, mode='w')
 print("Creating dataset at %s from directory %s" % (files_dir, h5_file_path))
-compression_filter = tables.Filters(complevel=5, complib='zlib')
-spectrogram_matrix_storage = h5_file.createCArray(h5_file.root,
-                                                  'spectrogram_matrix',
-                                                  tables.Float32Atom(),
-                                                  shape=spectrogram_matrix.shape,
-                                                  filters=compression_filter)
-spectrogram_subset_mean = h5_file.createCArray(h5_file.root,
-                                               'spectrogram_subset_mean',
-                                               tables.Float32Atom(),
-                                               shape=tf_s_mean.shape,
-                                               filters=compression_filter)
+compression_filter = tables.Filters(complevel=5, complib='blosc')
 residual_matrix_storage = h5_file.createCArray(h5_file.root, 'residual_matrix',
                                                tables.Float32Atom(),
                                                shape=residual_matrix.shape,
@@ -87,24 +76,23 @@ residual_subset_mean = h5_file.createCArray(h5_file.root,
                                             tables.Float32Atom(),
                                             shape=tf_r_mean.shape,
                                             filters=compression_filter)
-spectrogram_matrix_storage[:] = spectrogram_matrix[:]
-spectrogram_subset_mean[:] = tf_s_mean[:]
-residual_matrix_storage[:] = residual_matrix[:]
-residual_subset_mean[:] = tf_r_mean[:]
+residual_matrix_storage[:] = residual_matrix.astype('float32')
+residual_subset_mean[:] = tf_r_mean.astype('float32')
 
 f0_data = h5_file.createEArray(h5_file.root, 'f0_data',
                                tables.Float32Atom(),
-                               shape=(0, f0.shape[0]),
+                               shape=(0, len(f0)),
                                filters=compression_filter)
-spectrogram_data = h5_file.createEArray(h5_file.root, 'spectrogram_data',
-                                        tables.Float32Atom(),
-                                        shape=(0, reduced_log_spectrogram.shape[0], reduced_log_spectrogram.shape[1]),
-                                        filters=compression_filter)
+log_mel_spectrogram_data = h5_file.createEArray(h5_file.root,
+                                                'log_mel_spectrogram_data',
+                                                tables.Float32Atom(),
+                                                shape=(0, log_mel_spectrogram.shape[0], log_mel_spectrogram.shape[1]),
+                                                filters=compression_filter)
 residual_data = h5_file.createEArray(h5_file.root, 'residual_data',
                                      tables.Float32Atom(),
                                      shape=(0, reduced_residual.shape[0], reduced_residual.shape[1]),
                                      filters=compression_filter)
-file_keys = h5_file.createEArray(h5_file.root, 'meta_info',
+meta_info = h5_file.createEArray(h5_file.root, 'meta_info',
                                  tables.StringAtom(itemsize=8),
                                  shape=(0,),
                                  filters=compression_filter)
@@ -122,12 +110,12 @@ for n, npy_file in enumerate(npy_files):
         f0 = stonemask(X, fs, period, time_axis, f0)
         spectrogram = cheaptrick(X, fs, period, time_axis, f0)
         residual = platinum(X, fs, period, time_axis, f0, spectrogram)
-        log_spectrogram = np.log(spectrogram)
+        log_mel_spectrogram = np.log(melspec(spectrogram, fs, 64))
         f0_data.append(f0.astype('float32')[None])
-        spectrogram_data.append(tf_s.transform(
-            log_spectrogram.astype('float32'))[None])
+        log_mel_spectrogram_data.append(
+            log_mel_spectrogram.astype('float32')[None])
         residual_data.append(tf_r.transform(
-            residual.astype('float32'))[None])
-        file_keys.append(np.array(["%s-%i" % (npy_file, i)], dtype='S8'))
-        original_length.append(np.asarray([len(X),])[None])
+            residual).astype('float32')[None])
+        meta_info.append(np.array(["%s-%i" % (npy_file, i)], dtype='S8'))
+        original_length.append(np.asarray([len(X), ]).astype('int32')[None])
 h5_file.close()
