@@ -16,7 +16,7 @@ files_dir = sys.argv[1]
 npy_files = glob.glob(os.path.join(files_dir, '*[_,0-9][0-9].npy'))
 npy_files = sorted(npy_files, key=lambda x: int(x.split("_")[-1][:-4]))
 # Only do 50k examples at first, 10k per file
-# npy_files = npy_files[:5]
+#npy_files = npy_files[:5]
 
 if len(sys.argv) > 2:
     h5_file_path = os.path.join(sys.argv[2])
@@ -76,22 +76,25 @@ residual_subset_mean = h5_file.createCArray(h5_file.root,
                                             tables.Float32Atom(),
                                             shape=tf_r_mean.shape,
                                             filters=compression_filter)
+
 residual_matrix_storage[:] = residual_matrix.astype('float32')
 residual_subset_mean[:] = tf_r_mean.astype('float32')
 
-f0_data = h5_file.createEArray(h5_file.root, 'f0_data',
-                               tables.Float32Atom(),
-                               shape=(0, len(f0)),
-                               filters=compression_filter)
-log_mel_spectrogram_data = h5_file.createEArray(h5_file.root,
-                                                'log_mel_spectrogram_data',
-                                                tables.Float32Atom(),
-                                                shape=(0, log_mel_spectrogram.shape[0], log_mel_spectrogram.shape[1]),
-                                                filters=compression_filter)
-residual_data = h5_file.createEArray(h5_file.root, 'residual_data',
+feature_sizes = h5_file.createEArray(h5_file.root, 'feature_sizes',
                                      tables.Float32Atom(),
-                                     shape=(0, reduced_residual.shape[0], reduced_residual.shape[1]),
+                                     shape=(0, 2),
                                      filters=compression_filter)
+
+feature_sizes.append(np.asarray(f0[:, None].shape)[None])
+feature_sizes.append(np.asarray(log_mel_spectrogram.shape)[None])
+feature_sizes.append(np.asarray(reduced_residual.shape)[None])
+
+total_features = f0[:, None].shape[1] + log_mel_spectrogram.shape[1] + reduced_residual.shape[1]
+
+data = h5_file.createEArray(h5_file.root, 'data',
+                            tables.Float32Atom(),
+                            shape=(0, log_mel_spectrogram.shape[0], total_features),
+                            filters=compression_filter)
 meta_info = h5_file.createEArray(h5_file.root, 'meta_info',
                                  tables.StringAtom(itemsize=8),
                                  shape=(0,),
@@ -111,11 +114,10 @@ for n, npy_file in enumerate(npy_files):
         spectrogram = cheaptrick(X, fs, period, time_axis, f0)
         residual = platinum(X, fs, period, time_axis, f0, spectrogram)
         log_mel_spectrogram = np.log(melspec(spectrogram, fs, 64))
-        f0_data.append(f0.astype('float32')[None])
-        log_mel_spectrogram_data.append(
-            log_mel_spectrogram.astype('float32')[None])
-        residual_data.append(tf_r.transform(
-            residual).astype('float32')[None])
+        residual = tf_r.transform(residual)
+        sample = np.concatenate((f0[:, None], log_mel_spectrogram, residual),
+                                axis=1)
+        data.append(sample.astype('float32')[None])
         meta_info.append(np.array(["%s-%i" % (npy_file, i)], dtype='S8'))
         original_length.append(np.asarray([len(X), ]).astype('int32')[None])
 h5_file.close()
