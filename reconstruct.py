@@ -43,25 +43,28 @@ fs = 16000
 h5_file = tables.openFile(h5_file_path, mode='r')
 residual_matrix = h5_file.root.residual_matrix
 residual_subset_mean = h5_file.root.residual_subset_mean
-f0_data = h5_file.root.f0_data
-log_mel_spectrogram_data = h5_file.root.log_mel_spectrogram_data
-residual_data = h5_file.root.residual_data
 meta_info = h5_file.root.meta_info
 original_length = h5_file.root.original_length
+feature_sizes = h5_file.root.feature_sizes
+f0_shape = feature_sizes[0]
+log_mel_spectrogram_shape = feature_sizes[1]
+reduced_residual_shape = feature_sizes[2]
 
 idx = 474
-log_mel_spectrogram = log_mel_spectrogram_data[idx]
+n_log_mel_components = 2 * 64
+n_residual_components = 100
+X = h5_file.root.data[idx]
+f0 = X[:, 0]
+log_mel_spectrogram = X[:, 1:n_log_mel_components + 1]
+residual = X[:, -n_residual_components:]
 mel_spectrogram = np.exp(log_mel_spectrogram)
 # 1024 is constant
 # Add small constant to avoid NaN
 # Needs to be contiguous for WORLD
 spectrogram = np.ascontiguousarray(invmelspec(mel_spectrogram, fs, 1024)) + 1E-12
 
-residual = residual_data[idx]
 r_means = residual_subset_mean[:]
 residual = np.dot(residual, residual_matrix) + r_means
-
-f0 = f0_data[idx]
 
 len_x = original_length[idx, 0]
 
@@ -73,8 +76,6 @@ fs = np.cast['int32'](fs)
 len_x = np.cast['int32'](len_x)
 s = copy.deepcopy(s)
 r = copy.deepcopy(r)
-random_state = np.random.RandomState(1999)
-r = 0.01 * np.random.randn(*r.shape)
 f0 = copy.deepcopy(f0)
 
 y = synthesis(fs, period, f0, s, r, len_x)

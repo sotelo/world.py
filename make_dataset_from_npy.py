@@ -16,7 +16,7 @@ files_dir = sys.argv[1]
 npy_files = glob.glob(os.path.join(files_dir, '*[_,0-9][0-9].npy'))
 npy_files = sorted(npy_files, key=lambda x: int(x.split("_")[-1][:-4]))
 # Only do 50k examples at first, 10k per file
-npy_files = npy_files[:5]
+#npy_files = npy_files[:5]
 
 if len(sys.argv) > 2:
     h5_file_path = os.path.join(sys.argv[2])
