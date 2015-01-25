@@ -29,11 +29,17 @@ def soundsc(X, copy=True):
     return X.astype('int16')
 
 if len(sys.argv) < 2 or sys.argv[1] == "-h" or sys.argv[1] == "--help":
-    print("Usage: reconstruct.py <hdf5_file>")
+    print("Usage: reconstruct.py <hdf5_file> <stats_file>")
 
 h5_file_path = os.path.join(sys.argv[1])
 if not os.path.exists(h5_file_path):
     raise ValueError("File doesn't exist at %s, exiting." % h5_file_path)
+
+m = np.load(sys.argv[3])
+min_stats = m[0]
+max_stats = m[1]
+mean_stats = m[2]
+std_stats = m[3]
 
 # This should change is we change settings in make_dataset
 # Need to get last term from data or fix value somehow
@@ -53,9 +59,13 @@ reduced_residual_shape = feature_sizes[2]
 idx = 474
 n_log_mel_components = 2 * 64
 n_residual_components = 100
+
+f0_max = max_stats[0]
+spec_mean = mean_stats[1:n_log_mel_components + 1]
+
 X = h5_file.root.data[idx]
-f0 = X[:, 0]
-log_mel_spectrogram = X[:, 1:n_log_mel_components + 1]
+f0 = X[:, 0] * max_stats[0]
+log_mel_spectrogram = X[:, 1:n_log_mel_components + 1] * std_stats[1:128] +
 residual = X[:, -n_residual_components:]
 mel_spectrogram = np.exp(log_mel_spectrogram)
 # 1024 is constant
