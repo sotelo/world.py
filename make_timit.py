@@ -70,7 +70,7 @@ for i, X in enumerate(ds):
     step_size = 5 * 16
     sz = l.itemsize
     shape = (len(d), win_size)
-    strides = (step_size, sz)
+    strides = (sz * step_size, sz)
     # Reshape to 2D array with proper overlap and stride
     reshaped_labels = as_strided(ls[i], shape=shape, strides=strides)
     data.append(d)
