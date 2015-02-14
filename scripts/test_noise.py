@@ -2,7 +2,7 @@ from scipy.io import wavfile
 import copy
 import numpy as np
 import os
-from wrap1 import *
+from world import *
 import matplotlib.pyplot as plt
 
 def soundsc(X, copy=True):

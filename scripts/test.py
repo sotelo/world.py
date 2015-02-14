@@ -6,7 +6,7 @@ if __name__ == "__main__":
 
     file = 'test16k.wav'
     fs, x = scipy.io.wavfile.read(file)
-    from wrap1 import *
+    from world import *
     fs, nbit, x_length, x = readwav(file)
     #plt.plot(x)
     #plt.show()

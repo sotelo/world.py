@@ -4,7 +4,7 @@ import copy
 import numpy as np
 import os
 import sys
-from wrap1 import *
+from world import *
 import matplotlib.pyplot as plt
 #from sklearn.decomposition import FactorAnalysis
 from sklearn.decomposition import PCA

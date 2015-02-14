@@ -1,6 +1,6 @@
-# file: wrap1.pxd
+# file: world.pxd
 
-cimport wrap1
+cimport world
 
 cdef extern from "aperiodicity.h":
     void AperiodicityRatio(double *x, int x_length, int fs, double *f0,

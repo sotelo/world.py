@@ -1,6 +1,6 @@
 import numpy as np
 import sys
-from wrap1 import *
+from world import *
 from scipy.io import wavfile
 
 def soundsc(X, copy=True):

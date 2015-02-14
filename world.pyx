@@ -5,7 +5,7 @@ from cpython cimport PyObject, Py_INCREF
 import numpy as np
 cimport numpy as np
 
-cimport wrap1
+cimport world
 
 np.import_array()
 

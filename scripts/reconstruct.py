@@ -4,7 +4,7 @@ import os
 import sys
 import tables
 import copy
-from wrap1 import *
+from world import *
 from librosa_ports import invmelspec
 
 def soundsc(X, copy=True):

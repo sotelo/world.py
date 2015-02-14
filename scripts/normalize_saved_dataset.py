@@ -3,7 +3,7 @@ import numpy as np
 import os
 import sys
 import tables
-from wrap1 import *
+from world import *
 
 if len(sys.argv) < 2 or sys.argv[1] == "-h" or sys.argv[1] == "--help":
     print("Usage: make_dataset.py <hdf5_file>")
