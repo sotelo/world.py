@@ -4,7 +4,7 @@ First, run
 
 This should download and compile the WORLD code in lib/world.
 Next, we need to build the cython extension using
-`python setup.py build_ext --inplace`
+`python setup.py develop`
 
 To run test code the current directory *must* be on LD_LIBRARY_PATH!
 `export LD_LIBRARY_PATH += .` 
