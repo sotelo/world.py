@@ -1,6 +1,6 @@
 import numpy as np
 import sys
-from wrap1 import *
+from world import *
 from librosa_ports import melspec
 from sklearn.decomposition import PCA
 from numpy.lib.stride_tricks import as_strided

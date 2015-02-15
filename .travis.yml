@@ -1,0 +1,16 @@
+language: python
+python:
+- 2.7
+
+notifications:
+  email: false
+
+install:
+  - export LD_LIBRARY_PATH="$PWD:$LD_LIBRARY_PATH"
+  - sudo apt-get install build-essential python-setuptools python-numpy
+  - pip install cython
+  - bash build_world.sh
+  - python setup.py develop
+
+script:
+   - nosetests -s -v tests/

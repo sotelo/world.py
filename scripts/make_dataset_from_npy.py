@@ -3,7 +3,7 @@ import numpy as np
 import os
 import sys
 import tables
-from wrap1 import *
+from world import *
 from librosa_ports import melspec
 from sklearn.decomposition import PCA
 
