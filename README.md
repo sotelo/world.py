@@ -1,4 +1,3 @@
-[![Build Status](https://travis-ci.org/r9y9/world.py.svg?branch=dev)](https://travis-ci.org/r9y9/world.py)
 [![Build Status](https://travis-ci.org/jimsotelo/world.py.svg?branch=master)](https://travis-ci.org/jimsotelo/world.py)
 
 This code currently only works in python 2.7!
