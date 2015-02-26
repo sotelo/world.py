@@ -1,1 +1,1 @@
-LD_LIBRARY_PATH=. python normalize_saved_dataset.py $@
+LD_LIBRARY_PATH=../ python normalize_saved_dataset.py $@
