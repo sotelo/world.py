@@ -6,7 +6,7 @@ import tables
 from world import *
 
 if len(sys.argv) < 2 or sys.argv[1] == "-h" or sys.argv[1] == "--help":
-    print("Usage: make_dataset.py <hdf5_file>")
+    print("Usage: normalize_saved_dataset.py <hdf5_file> [saved_normalization_file])")
     quit()
 
 h5_file_path = sys.argv[1]
@@ -20,18 +20,25 @@ data = h5_file.root.data
 X = data[0:10000]
 orig_shape = X.shape
 X = X.reshape(orig_shape[0] * orig_shape[1], -1)
-# Check for unreasonably small divisors from constant features and correct to
-# avoid NaN
-min_stats = np.min(X, axis=0)
-max_stats = np.max(X, axis=0)
-max_stats[max_stats < 1.] = 1.
-mean_stats = np.mean(X, axis=0)
-std_stats = np.std(X, axis=0)
-std_stats[std_stats < 1E-6] = 1E-6
+if sys.argv < 3:
+    # Check for unreasonably small divisors from constant features and correct to
+    # avoid NaN
+    min_stats = np.min(X, axis=0)
+    max_stats = np.max(X, axis=0)
+    max_stats[max_stats < 1.] = 1.
+    mean_stats = np.mean(X, axis=0)
+    std_stats = np.std(X, axis=0)
+    std_stats[std_stats < 1E-6] = 1E-6
 
-np_path = os.path.join(storage_path, 'min_max_mean_std.npy')
-np.save(np_path,
-        np.vstack((min_stats, max_stats, mean_stats, std_stats)))
+    np_path = os.path.join(storage_path, 'min_max_mean_std.npy')
+    np.save(np_path,
+            np.vstack((min_stats, max_stats, mean_stats, std_stats)))
+else:
+    s = np.load(sys.argv[2])
+    min_stats = s[0]
+    max_stats = s[1]
+    mean_stats = s[2]
+    std_stats = s[3]
 
 data = h5_file.root.data
 n_spec = 2 * 64
