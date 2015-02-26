@@ -30,6 +30,8 @@ def soundsc(X, copy=True):
 
 if len(sys.argv) < 2 or sys.argv[1] == "-h" or sys.argv[1] == "--help":
     print("Usage: reconstruct.py <hdf5_file> <stats_file>")
+    quit()
+
 
 h5_file_path = os.path.join(sys.argv[1])
 if not os.path.exists(h5_file_path):
