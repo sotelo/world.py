@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/jimsotelo/world.py.svg?branch=master)](https://travis-ci.org/jimsotelo/world.py)
+[![Build Status](https://travis-ci.org/sotelo/world.py.svg?branch=master)](https://travis-ci.org/sotelo/world.py)
 
 This code currently only works in python 2.7!
 First, run
